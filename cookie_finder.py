@@ -36,6 +36,7 @@ def draw_menu(stdscr):
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     illegal_move = False
+    finished = False
 
     # Loop where k is the last character pressed
     while True:
