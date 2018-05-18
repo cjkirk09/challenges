@@ -138,15 +138,13 @@ def draw_menu(stdscr):
         stdscr.addstr(position_y, position_x, 'U')
 
         # Rendering some text
-        whstr = "Width: {}, Height: {}".format(width, height)
-        stdscr.addstr(0, 0, whstr, curses.color_pair(1))
         stdscr.addstr(2, 0, 'Cookies Remaining: {}'.format(len(cookies)))
 
         # Render status bar
         statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(position_x, position_y)
         stdscr.attron(curses.color_pair(3))
-        stdscr.addstr(height-1, 0, statusbarstr)
-        stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+        stdscr.addstr(0, 0, statusbarstr)
+        stdscr.addstr(0, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
         stdscr.attroff(curses.color_pair(3))
 
         # Refresh the screen
@@ -172,7 +170,7 @@ def performMovementLogic(current_x, current_y, items):
         if random.random() > 0.5:
             current_x += 1
         else:
-            current_x -= 12
+            current_x -= 1
     else:
         if random.random() > 0.5:
             current_y += 1
