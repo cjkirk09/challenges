@@ -1,16 +1,17 @@
-import sys,os
+import sys
 import curses
 import random
 import time
-arena_width = 20
-arena_height = 20
-arena_start_x = 10
-arena_start_y = 10
+from cookie_move import performMovementLogic
 
-def draw_menu(stdscr):
-    k = 0
+def draw_menu(stdscr, demo):
     position_x = 10
     position_y = 10
+
+    arena_width = 20
+    arena_height = 20
+    arena_start_x = 10
+    arena_start_y = 10
 
     stdscr.nodelay(1)
     stdscr.leaveok(1)
@@ -39,8 +40,13 @@ def draw_menu(stdscr):
 
     illegal_move = False
     finished = False
+    too_slow = False
     stuck = False
     stuck_timeout = 10
+    winning_time = None
+    time_limit = 10
+
+    start_time = time.time()
 
     # Loop where k is the last character pressed
     while True:
@@ -50,9 +56,16 @@ def draw_menu(stdscr):
         if k == ord('q'):
             break
 
-        if illegal_move or finished:
-            # cheater cheater
-            stdscr.addstr(4, 0, '{}'.format('You Cheated!' if illegal_move else 'You Won!'))
+        time_passed = time.time() - start_time
+
+        if illegal_move or finished or too_slow:
+            if illegal_move:
+                message = 'You Cheated!'
+            elif too_slow:
+                message = 'You took too long! Must do it in less than {} seconds'.format(time_limit)
+            else:
+                message = 'You Won in {} seconds!'.format(winning_time)
+            stdscr.addstr(4, 0, '{}'.format(message))
             stdscr.addstr(5, 0, 'Press "q" to exit')
             # Refresh the screen
             stdscr.refresh()
@@ -61,8 +74,13 @@ def draw_menu(stdscr):
         # Clear the screen
         stdscr.clear()
 
+        if time_passed > time_limit:
+            too_slow = True
+            continue
+
         if not cookies:
             finished = True
+            winning_time = time_passed
             continue
 
         if stuck and not stuck_timeout:
@@ -84,7 +102,10 @@ def draw_menu(stdscr):
         for key, value in items.iteritems():
             items_copy[key] = value
 
-        position_x, position_y = performMovementLogic(position_x, position_y, items_copy)
+        if demo:
+            position_x, position_y = myPerformMovementLogic(position_x, position_y, items_copy)
+        else:
+            position_x, position_y = performMovementLogic(position_x, position_y, items_copy)
 
         # todo check that only 2 ints were returned
 
@@ -141,7 +162,7 @@ def draw_menu(stdscr):
         stdscr.addstr(2, 0, 'Cookies Remaining: {}'.format(len(cookies)))
 
         # Render status bar
-        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(position_x, position_y)
+        statusbarstr = "Press 'q' to exit | Time: {} | Pos: {}, {}".format(time_passed, position_x, position_y)
         stdscr.attron(curses.color_pair(3))
         stdscr.addstr(0, 0, statusbarstr)
         stdscr.addstr(0, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
@@ -153,33 +174,42 @@ def draw_menu(stdscr):
         time.sleep(0.2)
 
 
-def performMovementLogic(current_x, current_y, items):
+def myPerformMovementLogic(current_x, current_y, items):
 
-    # TODO find closest cookie
-    closest_cookie = None
+    # Greedy find closest cookie
+    cookie_x = None
+    cookie_y = None
+    best_delta_x = 100
+    best_delta_y = 100
     for location_tuple, value in items.iteritems():
         if value != u'cookie':
             continue
-        delta_x = abs(current_x - location_tuple[0])
-        delta_y = abs(current_y - location_tuple[1])
+        delta_x = abs(location_tuple[0] - current_x)
+        delta_y = abs(location_tuple[1] - current_y)
+        if delta_x + delta_y < best_delta_x + best_delta_y:
+            cookie_x = location_tuple[0]
+            cookie_y = location_tuple[1]
+            best_delta_x = delta_x
+            best_delta_y = delta_y
 
-    # TODO head towards it, if there is an obstacle go around
+    # head towards it
+    if cookie_x > current_x:
+        current_x += 1
+    elif cookie_x < current_x:
+        current_x -= 1
+    elif cookie_y > current_y:
+        current_y += 1
+    elif cookie_y < current_y:
+        current_y -= 1
 
-    # randomly wander the area
-    if random.random() > 0.5:
-        if random.random() > 0.5:
-            current_x += 1
-        else:
-            current_x -= 1
-    else:
-        if random.random() > 0.5:
-            current_y += 1
-        else:
-            current_y -= 1
     return current_x, current_y
 
-def main():
-    curses.wrapper(draw_menu)
+def main(demo):
+    print(demo)
+    curses.wrapper(draw_menu, demo)
 
 if __name__ == "__main__":
-    main()
+    demo = False
+    if len(sys.argv) == 2:
+        demo = sys.argv[1] == u'demo'
+    main(demo)
