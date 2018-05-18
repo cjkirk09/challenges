@@ -9,15 +9,17 @@ arena_start_y = 10
 
 def draw_menu(stdscr):
     k = 0
-    cursor_x = 10
-    cursor_y = 10
+    position_x = 10
+    position_y = 10
 
+    stdscr.nodelay(1)
+    stdscr.leaveok(1)
     # Clear and refresh the screen for a blank canvas
     stdscr.clear()
     stdscr.refresh()
 
     items = {}
-    # todo maybe add obstacles and maybe put the arena boundaries as obstacles
+    # TODO maybe add obstacles and maybe put the arena boundaries as obstacles
     # initialize cookies
     cookies = []
     while len(cookies) < 5:
@@ -37,54 +39,81 @@ def draw_menu(stdscr):
 
     illegal_move = False
     finished = False
+    stuck = False
+    stuck_timeout = 10
 
     # Loop where k is the last character pressed
     while True:
+
+        # Check for input
+        k = stdscr.getch()
+        if k == ord('q'):
+            break
+
         if illegal_move or finished:
             # cheater cheater
-            # Wait for next input
-            k = stdscr.getch()
-            if k == ord('q'):
-                break
+            stdscr.addstr(4, 0, '{}'.format('You Cheated!' if illegal_move else 'You Won!'))
+            stdscr.addstr(5, 0, 'Press "q" to exit')
+            # Refresh the screen
+            stdscr.refresh()
             continue
+
+        # Clear the screen
+        stdscr.clear()
 
         if not cookies:
             finished = True
             continue
-        # Initialization
-        stdscr.clear()
+
+        if stuck and not stuck_timeout:
+            break
+        elif stuck:
+            if stuck_timeout < 6:
+                stdscr.addstr(4, 0, 'You seem stuck. {}'.format('closing now' if stuck_timeout == 1 else ''))
+            stuck_timeout -= 1
+        else:
+            stuck_timeout = 10
+
         height, width = stdscr.getmaxyx()
 
-        old_x = cursor_x
-        old_y = cursor_y
+        old_x = position_x
+        old_y = position_y
 
         # give a copy of the items so that they can't cheat and change the locations
         items_copy = {}
         for key, value in items.iteritems():
             items_copy[key] = value
 
-        cursor_x, cursor_y = performMovementLogic(cursor_x, cursor_y, items_copy)
+        position_x, position_y = performMovementLogic(position_x, position_y, items_copy)
+
+        # todo check that only 2 ints were returned
 
         # check that they only tried to move square in x or y, but not both
-        if old_x != cursor_x and old_y != cursor_y:
+        if old_x != position_x and old_y != position_y:
             illegal_move = True
-        elif old_x != cursor_x:
-            if abs(old_x - cursor_x) > 1:
+        elif old_x != position_x:
+            if abs(old_x - position_x) > 1:
                 illegal_move = True
-        elif old_y != cursor_y:
-            if abs(old_y - cursor_y) > 1:
+        elif old_y != position_y:
+            if abs(old_y - position_y) > 1:
                 illegal_move = True
 
         if illegal_move:
             # show the cheater message and refresh the screen
+            stdscr.clear()
             continue
 
         # limit to within the arena
-        cursor_x = max(arena_start_x, cursor_x)
-        cursor_x = min(arena_start_x + arena_width - 1, cursor_x)
+        position_x = max(arena_start_x, position_x)
+        position_x = min(arena_start_x + arena_width - 1, position_x)
 
-        cursor_y = max(arena_start_y, cursor_y)
-        cursor_y = min(arena_start_y + arena_height - 1, cursor_y)
+        position_y = max(arena_start_y, position_y)
+        position_y = min(arena_start_y + arena_height - 1, position_y)
+
+        if old_x == position_x and old_y == position_y:
+            stuck = True
+        else:
+            stuck = False
 
         # draw arena border
         stdscr.addstr(arena_start_y - 1, arena_start_x - 1, 'X'*(arena_width+2))
@@ -96,22 +125,17 @@ def draw_menu(stdscr):
         # draw cookies
         cookie_to_remove = None
         for cookie in cookies:
-            if cursor_x == cookie['x'] and cursor_y == cookie['y']:
+            if position_x == cookie['x'] and position_y == cookie['y']:
                 stdscr.addstr(7, 7, 'You Found a Cookie!')
                 cookie_to_remove = cookie
             else:
                 stdscr.addstr(cookie['y'], cookie['x'], 'C')
         if cookie_to_remove:
             cookies.remove(cookie_to_remove)
-            del items[(cookie_to_remove['x'], cookie_to_remove['x'])]
+            del items[(cookie_to_remove['x'], cookie_to_remove['y'])]
 
-        # Declaration of strings
-        title = "Curses example"[:width-1]
-        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(cursor_x, cursor_y)
-
-        # Centering calculations
-        start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
-        start_y = int((height // 2) - 2)
+        # Draw you
+        stdscr.addstr(position_y, position_x, 'U')
 
         # Rendering some text
         whstr = "Width: {}, Height: {}".format(width, height)
@@ -119,54 +143,41 @@ def draw_menu(stdscr):
         stdscr.addstr(2, 0, 'Cookies Remaining: {}'.format(len(cookies)))
 
         # Render status bar
+        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(position_x, position_y)
         stdscr.attron(curses.color_pair(3))
         stdscr.addstr(height-1, 0, statusbarstr)
         stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
         stdscr.attroff(curses.color_pair(3))
 
-        # # Turning on attributes for title
-        # stdscr.attron(curses.color_pair(2))
-        # stdscr.attron(curses.A_BOLD)
-        #
-        # # Rendering title
-        # stdscr.addstr(start_y, start_x_title, title)
-        #
-        # # Turning off attributes for title
-        # stdscr.attroff(curses.color_pair(2))
-        # stdscr.attroff(curses.A_BOLD)
-
-        # Print rest of text
-        stdscr.move(cursor_y, cursor_x)
-
         # Refresh the screen
         stdscr.refresh()
 
-        time.sleep(0.5)
-
-        # # Wait for next input
-        # k = stdscr.getch()
+        time.sleep(0.2)
 
 
 def performMovementLogic(current_x, current_y, items):
-    print(items)
-    # if k == curses.KEY_DOWN:
-    #     current_y = current_y + 1
-    # elif k == curses.KEY_UP:
-    #     current_y = current_y - 1
-    # elif k == curses.KEY_RIGHT:
-    #     current_x = current_x + 1
-    # elif k == curses.KEY_LEFT:
-    #     current_x = current_x - 1
 
-    # find closest cookie
+    # TODO find closest cookie
     closest_cookie = None
     for location_tuple, value in items.iteritems():
         if value != u'cookie':
             continue
         delta_x = abs(current_x - location_tuple[0])
         delta_y = abs(current_y - location_tuple[1])
-    # head towards it, if there is an obstacle go around
 
+    # TODO head towards it, if there is an obstacle go around
+
+    # randomly wander the area
+    if random.random() > 0.5:
+        if random.random() > 0.5:
+            current_x += 1
+        else:
+            current_x -= 12
+    else:
+        if random.random() > 0.5:
+            current_y += 1
+        else:
+            current_y -= 1
     return current_x, current_y
 
 def main():
