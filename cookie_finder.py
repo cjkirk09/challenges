@@ -120,7 +120,6 @@ def draw_menu(stdscr, demo):
                 illegal_move = True
 
         if illegal_move:
-            # show the cheater message and refresh the screen
             stdscr.clear()
             continue
 
@@ -157,6 +156,12 @@ def draw_menu(stdscr, demo):
 
         # Draw you
         stdscr.addstr(position_y, position_x, 'U')
+
+        if not cookies:
+            finished = True
+            winning_time = time_passed
+            stdscr.clear()
+            continue
 
         # Rendering some text
         stdscr.addstr(2, 0, 'Cookies Remaining: {}'.format(len(cookies)))
@@ -205,7 +210,6 @@ def myPerformMovementLogic(current_x, current_y, items):
     return current_x, current_y
 
 def main(demo):
-    print(demo)
     curses.wrapper(draw_menu, demo)
 
 if __name__ == "__main__":
