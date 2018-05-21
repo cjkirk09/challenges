@@ -154,8 +154,8 @@ def draw_menu(stdscr, demo):
             cookies.remove(cookie_to_remove)
             del items[(cookie_to_remove['x'], cookie_to_remove['y'])]
 
-        # Draw you
-        stdscr.addstr(position_y, position_x, 'U')
+        # Draw the robot
+        stdscr.addstr(position_y, position_x, 'R')
 
         if not cookies:
             finished = True
