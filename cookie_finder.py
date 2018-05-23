@@ -8,8 +8,8 @@ def draw_menu(stdscr, demo):
     position_x = 10
     position_y = 10
 
-    arena_width = 20
-    arena_height = 20
+    arena_width = 35
+    arena_height = 10
     arena_start_x = 10
     arena_start_y = 10
 
@@ -20,7 +20,6 @@ def draw_menu(stdscr, demo):
     stdscr.refresh()
 
     items = {}
-    # TODO maybe add obstacles and maybe put the arena boundaries as obstacles
     # initialize cookies
     cookies = []
     while len(cookies) < 5:
@@ -32,6 +31,16 @@ def draw_menu(stdscr, demo):
             items[coordinates] = 'cookie'
             cookies.append(cookie)
 
+    veggies = []
+    while len(veggies) < 5:
+        veggie_x = int(random.random() * arena_width + arena_start_x)
+        veggie_y = int(random.random() * arena_height + arena_start_y)
+        veggie = {'x': veggie_x, 'y': veggie_y}
+        coordinates = (veggie_x, veggie_y)
+        if coordinates not in items:
+            items[coordinates] = 'veggie'
+            veggies.append(veggie)
+
     # Start colors in curses
     curses.start_color()
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
@@ -41,10 +50,9 @@ def draw_menu(stdscr, demo):
     illegal_move = False
     finished = False
     too_slow = False
-    stuck = False
-    stuck_timeout = 10
     winning_time = None
     time_limit = 10
+    cheater_message = u''
 
     start_time = time.time()
 
@@ -60,7 +68,7 @@ def draw_menu(stdscr, demo):
 
         if illegal_move or finished or too_slow:
             if illegal_move:
-                message = 'You Cheated!'
+                message = 'You Cheated! {}'.format(cheater_message)
             elif too_slow:
                 message = 'You took too long! Must do it in less than {} seconds'.format(time_limit)
             else:
@@ -83,15 +91,6 @@ def draw_menu(stdscr, demo):
             winning_time = time_passed
             continue
 
-        if stuck and not stuck_timeout:
-            break
-        elif stuck:
-            if stuck_timeout < 6:
-                stdscr.addstr(4, 0, 'You seem stuck. {}'.format('closing now' if stuck_timeout == 1 else ''))
-            stuck_timeout -= 1
-        else:
-            stuck_timeout = 10
-
         height, width = stdscr.getmaxyx()
 
         old_x = position_x
@@ -102,6 +101,8 @@ def draw_menu(stdscr, demo):
         for key, value in items.iteritems():
             items_copy[key] = value
 
+        # TODO add debugging hook
+        # TODO improve docstring
         if demo:
             position_x, position_y = myPerformMovementLogic(position_x, position_y, items_copy)
         else:
@@ -112,12 +113,15 @@ def draw_menu(stdscr, demo):
         # check that they only tried to move square in x or y, but not both
         if old_x != position_x and old_y != position_y:
             illegal_move = True
+            cheater_message = u"You can't move diagonally"
         elif old_x != position_x:
             if abs(old_x - position_x) > 1:
                 illegal_move = True
+                cheater_message = u"You can't move more than 1 space at a time"
         elif old_y != position_y:
             if abs(old_y - position_y) > 1:
                 illegal_move = True
+                cheater_message = u"You can't move more than 1 space at a time"
 
         if illegal_move:
             stdscr.clear()
@@ -130,11 +134,6 @@ def draw_menu(stdscr, demo):
         position_y = max(arena_start_y, position_y)
         position_y = min(arena_start_y + arena_height - 1, position_y)
 
-        if old_x == position_x and old_y == position_y:
-            stuck = True
-        else:
-            stuck = False
-
         # draw arena border
         stdscr.addstr(arena_start_y - 1, arena_start_x - 1, 'X'*(arena_width+2))
         for i in range(arena_height):
@@ -142,17 +141,21 @@ def draw_menu(stdscr, demo):
             stdscr.addstr(arena_start_y + i, arena_start_x + arena_width, 'X')
         stdscr.addstr(arena_start_y + arena_height, arena_start_x - 1, 'X' * (arena_width + 2))
 
-        # draw cookies
-        cookie_to_remove = None
-        for cookie in cookies:
-            if position_x == cookie['x'] and position_y == cookie['y']:
-                stdscr.addstr(7, 7, 'You Found a Cookie!')
-                cookie_to_remove = cookie
+        # draw items
+        item_to_remove = None
+        for position, item_type in items.iteritems():
+            if position_x == position[0] and position_y == position[1]:
+                item_to_remove = position
+                if item_type == 'cookie':
+                    stdscr.addstr(7, 7, 'You Found a Cookie!')
+                    cookies.pop()
+                else:
+                    stdscr.addstr(7, 7, 'You Found a Veggie!')
+                    veggies.pop()
             else:
-                stdscr.addstr(cookie['y'], cookie['x'], 'C')
-        if cookie_to_remove:
-            cookies.remove(cookie_to_remove)
-            del items[(cookie_to_remove['x'], cookie_to_remove['y'])]
+                stdscr.addstr(position[1], position[0], 'C' if item_type == 'cookie' else 'V')
+        if item_to_remove:
+            del items[item_to_remove]
 
         # Draw the robot
         stdscr.addstr(position_y, position_x, 'R')
