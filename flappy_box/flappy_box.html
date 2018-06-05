@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Page</title>
+</head>
+
+<body>
+    <div>Hello</div>
+    <div style="cursor:pointer; text-decoration: underline" onclick="startGame()">Click to Start</div>
+    <canvas id="gameCanvas" style="border:1px solid #d3d3d3; background-color: #f1f1f1;" width="480" height="270"></canvas>
+
+
+<script>
+var myGamePiece;
+var myObstacles = [];
+var myScore;
+
+function startGame() {
+    console.log('starting Game');
+    myGameArea.reset();
+    myGameArea.canvas = document.getElementById("gameCanvas");
+    myGameArea.start();
+    myGamePiece = new component(30, 30, "red", 10, 120);
+    myObstacle = new component(10, 200, "green", 300, 120);
+    myScore = new component("30px", "Consolas", "black", 280, 40, "text");
+}
+
+var myGameArea = {
+    canvas : null,
+    start : function() {
+        this.context = this.canvas.getContext("2d");
+        this.frameNo = 0;
+        this.speed = 1;
+        this.interval = setInterval(updateGameArea, 20);
+        window.addEventListener('keydown', function (e) {
+            if (e.keyCode) {
+                myGamePiece.gravitySpeed = 0;
+                myGamePiece.accelerate(-3);
+            }
+        });
+        window.addEventListener('keyup', function (e) {
+            if (e.keyCode) {
+                myGamePiece.accelerate(0.1);
+            }
+        })
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+    stop : function() {
+        clearInterval(this.interval);
+    },
+    reset : function () {
+        if (!this.canvas) {
+            return;
+        }
+        this.stop();
+        this.clear();
+        this.frameNo = 0;
+        this.keys = [];
+        myObstacles = [];
+        myScore = 0;
+        this.speed = 1;
+    },
+    speedUp : function () {
+        this.speed += 1;
+    }
+};
+
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    if (type === "image" || type === "background") {
+        this.image = new Image();
+        this.image.src = color;
+    }
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+    this.gravity = 0.05;
+    this.gravitySpeed = 0;
+    this.bounce = 0.5;
+    this.update = function() {
+        ctx = myGameArea.context;
+        if (this.type === "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else if (type === "image" || type === "background") {
+            ctx.drawImage(this.image,
+                this.x,
+                this.y,
+                this.width, this.height);
+            if (type === "background") {
+                ctx.drawImage(this.image,
+                this.x + this.width, this.y, this.width, this.height);
+            }
+        } else if (type === 'falling') {
+            this.gravitySpeed += this.gravity;
+            this.y += this.gravitySpeed;
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    };
+    this.newPos = function() {
+        this.gravitySpeed += this.gravity;
+        this.x += this.speedX;
+        this.y += this.speedY + this.gravitySpeed;
+        if (this.type === "background") {
+            if (this.x === -(this.width)) {
+                this.x = 0;
+            }
+        }
+        this.hitBottom();
+        this.hitTop();
+    };
+    this.hitBottom = function() {
+        var rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+            this.y = rockbottom;
+            this.gravitySpeed = -(this.gravitySpeed * this.bounce);
+        }
+    };
+    this.hitTop = function() {
+        if (this.y < 0) {
+            this.y = 0;
+            this.gravitySpeed = -(this.gravitySpeed * this.bounce);
+        }
+    };
+    this.crashWith = function(otherobj) {
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) &&
+               (mytop > otherbottom) &&
+               (myright < otherleft) &&
+               (myleft > otherright)) {
+           crash = false;
+        }
+        return crash;
+    };
+    this.accelerate = function (n) {
+        this.gravity = n;
+    }
+}
+
+function everyinterval(n) {
+    if ((myGameArea.frameNo / n) % 1 === 0) {return true;}
+    return false;
+}
+
+function updateGameArea() {
+    var x, y;
+    for (i = 0; i < myObstacles.length; i += 1) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+            myGameArea.stop();
+            return;
+        }
+    }
+    myGameArea.clear();
+
+    myGameArea.frameNo += 1;
+
+    if (everyinterval(50)) {
+        myGameArea.speedUp();
+    }
+
+    if (myGameArea.frameNo === 1 || everyinterval(150)) {
+        x = myGameArea.canvas.width;
+        minHeight = 20;
+        maxHeight = 200;
+        height = Math.floor(Math.random()*(maxHeight-minHeight+1)+minHeight);
+        minGap = 50;
+        maxGap = 200;
+        gap = Math.floor(Math.random()*(maxGap-minGap+1)+minGap);
+        myObstacles.push(new component(10, height, "green", x, 0));
+        myObstacles.push(new component(10, x - height - gap, "green", x, height + gap));
+    }
+    if (everyinterval(190)) {
+        x = myGameArea.canvas.width;
+        myObstacles.push(new component(40, 30, "blue", x, 0, 'falling'))
+    }
+    for (i = 0; i < myObstacles.length; i += 1) {
+        myObstacles[i].x -= myGameArea.speed;
+        myObstacles[i].update();
+    }
+
+    myObstacles = myObstacles.filter(function(obstacle) {
+        return obstacle.x + obstacle.width > 0 && obstacle.y < myGameArea.canvas.height;
+    });
+
+
+    myScore.text="SCORE: " + myGameArea.frameNo;
+    myScore.update();
+
+    myGamePiece.newPos();
+    myGamePiece.update();
+
+}
+</script>
+</body>
+</html>

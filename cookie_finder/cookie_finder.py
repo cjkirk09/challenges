@@ -181,24 +181,30 @@ def draw_menu(stdscr, demo):
 
         time.sleep(0.2)
 
-
+my_destination = None
 def myPerformMovementLogic(current_x, current_y, items):
+    global my_destination
 
-    # Greedy find closest cookie
-    cookie_x = None
-    cookie_y = None
-    best_delta_x = 100
-    best_delta_y = 100
-    for location_tuple, value in items.iteritems():
-        if value != u'cookie':
-            continue
-        delta_x = abs(location_tuple[0] - current_x)
-        delta_y = abs(location_tuple[1] - current_y)
-        if delta_x + delta_y < best_delta_x + best_delta_y:
-            cookie_x = location_tuple[0]
-            cookie_y = location_tuple[1]
-            best_delta_x = delta_x
-            best_delta_y = delta_y
+    if my_destination not in items:
+        # Greedy find closest cookie
+        cookie_x = None
+        cookie_y = None
+        best_delta_x = 100
+        best_delta_y = 100
+        for location_tuple, value in items.iteritems():
+            if value != u'cookie':
+                continue
+            delta_x = abs(location_tuple[0] - current_x)
+            delta_y = abs(location_tuple[1] - current_y)
+            if delta_x + delta_y < best_delta_x + best_delta_y:
+                cookie_x = location_tuple[0]
+                cookie_y = location_tuple[1]
+                best_delta_x = delta_x
+                best_delta_y = delta_y
+        my_destination = (cookie_x, cookie_y)
+    else:
+        cookie_x = my_destination[0]
+        cookie_y = my_destination[1]
 
     # head towards it
     if cookie_x > current_x:
